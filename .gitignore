@@ -1,0 +1,10 @@
+/node_modules
+.turbo/
+**/.turbo/
+apps/server/dist/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions

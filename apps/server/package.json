@@ -3,23 +3,33 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsdown",
+    "build": "npm --prefix ../../packages/db run db:migrate && tsdown",
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --hot src/index.ts",
-    "start": "bun run dist/index.mjs"
+    "start": "bun run dist/index.mjs",
+    "test": "bun test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.908.0",
     "@my-better-t-app/db": "*",
     "@my-better-t-app/env": "*",
+    "assemblyai": "^4.7.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.2",
-    "hono": "^4.8.2",
+    "express": "^4.21.2",
+    "latest": "^0.2.0",
+    "multer": "^1.4.5-lts.2",
+    "redis": "^5.8.3",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@my-better-t-app/config": "*",
     "@types/bun": "^1.3.4",
-    "tsdown": "^0.16.5",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.12",
+    "tsdown": "^0.21.10",
     "typescript": "^5"
   }
 }

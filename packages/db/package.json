@@ -10,10 +10,10 @@
     }
   },
   "scripts": {
-    "db:push": "drizzle-kit push",
-    "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio",
-    "db:migrate": "drizzle-kit migrate",
+    "db:push": "bun run src/migrate.ts",
+    "db:generate": "bun run src/migrate.ts",
+    "db:studio": "echo 'TypeORM studio not configured'",
+    "db:migrate": "bun run src/migrate.ts",
     "db:start": "docker compose up -d",
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
@@ -22,14 +22,14 @@
   "dependencies": {
     "@my-better-t-app/env": "*",
     "dotenv": "^17.2.2",
-    "drizzle-orm": "^0.45.1",
     "pg": "^8.17.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.27",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@my-better-t-app/config": "*",
     "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8",
     "typescript": "^5"
   }
 }

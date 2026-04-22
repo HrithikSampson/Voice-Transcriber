@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@my-better-t-app/ui/components/card"
 import { LiveWaveform } from "@/components/ui/live-waveform"
-import { useRecorder, type WavChunk } from "@/hooks/use-recorder"
+import { useRecorder, type TranscriptSegment, type WavChunk } from "@/hooks/use-recorder"
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -23,6 +23,19 @@ function formatTime(seconds: number) {
 
 function formatDuration(seconds: number) {
   return `${seconds.toFixed(1)}s`
+}
+
+function downloadTranscriptFile(transcript: TranscriptSegment[]) {
+  const content = transcript
+    .map((segment) => `${segment.speaker}: ${segment.text}`.trim())
+    .join("\n")
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "transcript.txt"
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function ChunkRow({ chunk, index }: { chunk: WavChunk; index: number }) {
@@ -76,7 +89,7 @@ function ChunkRow({ chunk, index }: { chunk: WavChunk; index: number }) {
 
 export default function RecorderPage() {
   const [deviceId] = useState<string | undefined>()
-  const { status, start, stop, pause, resume, chunks, elapsed, stream, clearChunks } =
+  const { status, start, stop, pause, resume, chunks, transcript, elapsed, stream, clearChunks } =
     useRecorder({ chunkDuration: 5, deviceId })
 
   const isRecording = status === "recording"
@@ -191,6 +204,35 @@ export default function RecorderPage() {
               <Trash2 className="size-3" />
               Clear all
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {status === "idle" && transcript.length > 0 && (
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Transcript</CardTitle>
+            <CardDescription>Generated after recording</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-end"
+              onClick={() => downloadTranscriptFile(transcript)}
+            >
+              Download transcript
+            </Button>
+            {transcript.map((segment, index) => (
+              <div
+                key={`${segment.sequenceNo}-${segment.startMs}-${segment.endMs}-${index}`}
+                className="rounded-sm border border-border/50 bg-muted/30 px-3 py-2"
+              >
+                <p className="text-sm">
+                  <span className="font-medium">{segment.speaker}:</span> {segment.text}
+                </p>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
