@@ -1,0 +1,92 @@
+# Deploys the monorepo to EC2 over SSH: the instance clones the repo, runs `deploy/ec2-deploy.sh`, and reloads PM2.
+#
+# One-time EC2 setup (SSH in once):
+#   - Node.js 22+ and npm (`nvm`, `nodesource`, or Amazon Linux extras)
+#   - Bun (`curl -fsSL https://bun.sh/install | bash`), then ensure `bun` is on SSH PATH (e.g. `~/.bun/bin` in ~/.profile)
+#   - `sudo npm install -g pm2` and PostgreSQL / Redis reachable from apps/server `.env`
+#   - `apps/server/.env` and Next build env (`apps/web/.env.production` or `NEXT_PUBLIC_*` exported before build)
+#
+# Secrets (repository):
+#   EC2_HOST     — hostname or Elastic IP
+#   EC2_USER     — `ubuntu`, `ec2-user`, …
+#   EC2_SSH_KEY  — private key PEM (whole file as secret)
+#
+# Optional:
+#   EC2_APP_DIR — absolute repo path on EC2 if not `$HOME/app` (workflow checks out from there)
+
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to checkout on EC2 before pull
+        required: false
+        default: main
+
+concurrency:
+  group: ec2-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      # Requires Node.js 22+ (Ultracite / Oxlint toolchain).
+      - name: Lint (Ultracite)
+        run: npm run check
+
+  deploy:
+    name: Deploy on EC2
+    runs-on: ubuntu-latest
+    needs: ci
+    if: ${{ github.actor != 'dependabot[bot]' }}
+
+    timeout-minutes: 30
+
+    steps:
+      - name: Remote deploy script over SSH
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 30m
+          command_timeout: 25m
+          script_stop: true
+          envs: EC2_APP_DIR,DEPLOY_BRANCH
+          script: |
+            set -euo pipefail
+
+            HOME_DIR="$(getent passwd "$USER" | cut -d: -f6)"
+            APP="${EC2_APP_DIR:-$HOME_DIR/app}"
+
+            if [[ ! -d "$APP/.git" ]]; then
+              echo "EC2_APP_DIR '$APP' is not a git clone. Clone the repo once on the server, e.g.:"
+              echo "  mkdir -p $HOME_DIR && cd $HOME_DIR && git clone https://github.com/YOUR_ORG/YOUR_REPO.git app"
+              exit 1
+            fi
+
+            cd "$APP"
+            chmod +x deploy/ec2-deploy.sh 2>/dev/null || true
+            ./deploy/ec2-deploy.sh
+        env:
+          EC2_APP_DIR: ${{ secrets.EC2_APP_DIR }}
+          DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.branch || 'main') || github.ref_name }}
